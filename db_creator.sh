@@ -55,7 +55,10 @@ create_table(){
     while [ $max_number -eq 0 ]
     do
         echo "Input the field names (example: id name height age)"
-    	read -a FIELDNAMES
+    	echo "*First two field names will be created as mandatory fields!"
+	read -a FIELDNAMES
+
+	
     
     	fields_number=${#FIELDNAMES[@]}    
     	if (($fields_number > $max_rows || $fields_number < $max_rows));
@@ -63,30 +66,36 @@ create_table(){
         	echo "The required number of rows is $max_rows."
         	echo "Try again."
     	else
-#	    col_list=()
-            for ((i=0;i < $fields_number;i++));
-	    do
-	        if (( ${#FIELDNAMES[$i]} > $max_row_length_with_space ));
-	    	then    
-		    echo "Maximum number of characters for field names is $max_row_length_with_space."
-		    ((all_passed++))
-		    col_list=()
-		    break
-		else
-		    col_list+=(${FIELDNAMES[$i]})
-		fi
-            done
-	if [[ $all_passed -eq 0 ]];
-	then 
-	    ((max_number++))
-	    create_table_header
-	else
-            ((all_passed--))
-	fi
-    	fi
+	    create_table_header    
+            col_list=("${FIELDNAMES[@]}")
+	    validate_length "${FIELDNAMES[@]}"
+        fi 
     done
-    echo "lista prvi put ${col_list[@]}"
-    populate_table "${col_list[@]}"
+}
+validate_length(){
+#using $@ we are taking the passed arg to field_names variable, $@ to preserve empty elements
+    field_names=("$@")
+    for ((i=0;i < ${#field_names[@]};i++));
+    do
+        if (( ${#field_names[$i]} > $max_row_length_with_space ));
+	then    
+	    echo "Maximum number of characters for field names is $max_row_length_with_space."
+#	    echo "${field_names[$i]} vs ${col_list[$i]}"
+	    if [ ${field_names[$i]} == ${col_list[$i]} ];
+	    then
+		sleep 0.3
+		echo "Redirecting back to table rows creation.."
+		sleep 0.6
+	        create_table
+	    else
+		sleep 0.3
+		echo "Redirecting back to data insert.."
+		sleep 0.6
+   		insert_data
+	    fi             
+	fi
+    done
+    populate_table "${field_names[@]}"
 }
 
 populate_table() {
@@ -94,11 +103,9 @@ populate_table() {
     args_list=("$@")
     new_line=""   
     
-    echo "prvi print populejta ${args_list[@]}"
     new_col="*"
     for ((i=0;i<${#args_list[@]};i++))
     do
-	echo "print iz populejta ${args_list[$i]}"
         diff=$max_row_length_with_space-${#args_list[$i]}
     	new_line+="* ${args_list[$i]}"
     	for ((j=0;j < $diff;j++));
@@ -108,11 +115,11 @@ populate_table() {
         
     done
     new_col+=$new_line
-    echo "Creating table.."
+    echo "Updating table.."
     sleep 0.7
     new_col+="**"
     echo "${new_col}" >> ./$first_arg
-    echo "Table is successfully created!"
+    echo "Table is successfully updated!"
     cat ./$first_arg
 
     table_menu
@@ -161,17 +168,38 @@ table_menu(){
 
 insert_data(){
     insert_list=()
+    mandatory=0
     echo "You have entered inserting mode, follow the instructions!"
-    echo "${#col_list[@]}"
     
     for ((i=0; i < ${#col_list[@]}; i++));
-    do
-        printf "Insert the ${col_list[$i]} value: "
-        read value
-        insert_list+=($value)
+    do	
+	
+	while [ $mandatory -eq 0 ]
+	do
+
+            printf "Insert the ${col_list[$i]} value: "
+    	    read line
+	    if [[ $i -eq 0 || $i -eq 1 ]];
+	    then
+	        if [ -z $line ];
+	   	then
+		    echo "Mandatory fields: ${col_list[0]} and ${col_list[1]} cannot be empty!"
+	   	else
+	       	    insert_list+=("$line")
+	   	fi
+	    else
+	    	if [ -z $line ];
+	    	then
+		    insert_list+=(" ")
+		    ((mandatory++))
+	    	else
+		    insert_list+=("$line")
+		    ((mandatory++))
+	    	fi
+	    fi
+	done
     done
-    echo "printam insert listu ${insert_list[@]}"
-    populate_table "${insert_list[@]}"
+    validate_length "${insert_list[@]}"
 }
 
 create_table_selection() {
