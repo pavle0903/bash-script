@@ -8,6 +8,7 @@ total_args=$#
 
 creation_menu_selected=0
 max_line_length=39
+max_line_length_without_stars=36
 max_row_length=8
 max_row_length_with_space=7
 max_row_length_with_stars=9
@@ -63,9 +64,9 @@ create_table(){
 	
     
     	fields_number=${#FIELDNAMES[@]}    
-    	if (($fields_number > $max_rows || $fields_number < $max_rows));
+    	if (($fields_number > $max_rows ));
     	then
-        	echo "The required number of rows is $max_rows."
+        	echo "The maximum number of rows is $max_rows."
         	echo "Try again."
     	else
             col_list=("${FIELDNAMES[@]}")
@@ -116,6 +117,15 @@ populate_table() {
     	done
         
     done
+
+    echo "${#new_line} ovo je new line"
+    if (("${#new_line}" < $max_line_length_without_stars ));
+    then
+        for ((i="${#new_line}"; i < $max_line_length_without_stars; i++));
+        do
+	    new_line+=" "
+	done
+    fi
     new_col+=$new_line
     echo "Updating table.."
     sleep 0.7
@@ -129,7 +139,7 @@ populate_table() {
 }
 
 create_table_header(){
-    header_stars="*"
+    header_stars=""
     for ((i=0; i < $max_line_length;i++));
     do
         header_stars+="*"
@@ -158,10 +168,10 @@ table_menu(){
 	    insert_data
 	;;         
         2)
-	    select_data
+	    select_data "Read"
         ;;
         3)
-	    delete_data
+	    select_data "Delete"
         ;;
 
     esac
@@ -169,14 +179,14 @@ table_menu(){
 }
 
 select_data(){
-
-    echo "You have entered read data mode, loading options.."
+    read_or_delete=$1
+    echo "You have entered $read_or_delete data mode, loading options.."
     sleep 0.4
     echo "|---------------------|"
-    echo "  1. Read all data"
+    echo "  1. $read_or_delete all data"
     for (( i=0; i < ${#col_list[@]};i++ ));
     do
-        echo "  "$((i+2))". Read by ${col_list[$i]}"
+        echo "  "$((i+2))". $read_or_delete by ${col_list[$i]}"
     done
     echo "|---------------------|"
     printf "Choose from the list: "
@@ -189,29 +199,56 @@ select_data(){
     ;;
 
     2)
-        search_by "${col_list[0]}" 
+	printf "Insert the ${col_list[0]}: "
+	read id_read
+        read_delete "${col_list[0]}" "$id_read" "$read_or_delete"
     ;;
     
     3)
-        search_by "{col_list[1]}"
+	printf "Insert the ${col_list[1]}: "
+	read id_read
+        read_delete "${col_list[1]}" "$id_read" "$read_or_delete"
     ;; 
 
     4)
-        search_by "{col_list[2]}"
+	printf "Insert the ${col_list[2]}: "
+	read id_read
+        read_delete "${col_list[2]}" "$id_read" "$read_or_delete"
     ;;
     
     5)
-        search_by "{col_list[3]}"
+	printf "Insert the ${col_list[3]}: "
+	read id_read
+        read_delete "${col_list[3]}" "$id_read" "$read_or_delete"
     ;;
     esac
 
 }
 
-search_by(){
-    search_by_arg="$@"
-
+read_delete(){
+    search_by_arg="$1"
     echo "$search_by_arg"
-
+    value="$2"
+    read_or_del="$3"
+    input_file="$first_arg"
+ 
+    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$first_arg)  
+    echo "${column_index} indeks"
+    if [[ $read_or_del == "Read" ]]
+    then
+	echo "u readu sam"
+        awk -v col="$column_index" -v val="$value" 'NR <= 2 || $col == val' FS=' ' ./$first_arg
+    else
+	echo "u delete sam"
+	awk -v value="$value" -v col="$column_index" '$col != value' ./$first_arg | sponge ./$first_arg 
+        cat ./$first_arg
+    fi
+#   NR=1 umesto NR==1 setuje 1 za svaku liniju umesto da odradi samo prvu liniju? 
+#   NF je koliko ima kolona u odredjenom redu
+#   -F' ' specifies that the field separator is space
+#   NR <= 2 will print first two lines from the file
+#   $2 represents the position of the second column, we separated row by spaces
+#   awk -v value="$search_by_arg" -F' ' 'NR <= 2 || { for (i = 1; i <= NF; i++) if ($i == value) { print; break} }' ./$first_arg 
 }
 
 insert_data(){
