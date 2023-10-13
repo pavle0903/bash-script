@@ -13,9 +13,11 @@ max_row_length_with_space=7
 max_row_length_with_stars=9
 max_rows=4
 
+#the variable below is for while loop in columns creation
+max_number=0
 col_list=()
 
-cancel_table_creation(){
+cancel_table_creationi(){
     selected=0
     while [ $selected -eq 0 ]
     do
@@ -66,7 +68,6 @@ create_table(){
         	echo "The required number of rows is $max_rows."
         	echo "Try again."
     	else
-	    create_table_header    
             col_list=("${FIELDNAMES[@]}")
 	    validate_length "${FIELDNAMES[@]}"
         fi 
@@ -95,6 +96,7 @@ validate_length(){
 	    fi             
 	fi
     done
+    ((max_number++))
     populate_table "${field_names[@]}"
 }
 
@@ -130,9 +132,9 @@ create_table_header(){
     header_stars="*"
     for ((i=0; i < $max_line_length;i++));
     do
-        header_starts+="*"
+        header_stars+="*"
     done
-    echo "$header_starts" >> ./$first_arg
+    echo "$header_stars" >> ./$first_arg
 
 }
 
@@ -147,7 +149,7 @@ table_menu(){
     echo "  2. Select data"
     echo "  3. Delete data"
     echo "|---------------------|"
-    printf "Choose from the list:"
+    printf "Choose from the list: "
     read TABLEMENU
 
     case $TABLEMENU in
@@ -166,9 +168,54 @@ table_menu(){
 
 }
 
+select_data(){
+
+    echo "You have entered read data mode, loading options.."
+    sleep 0.4
+    echo "|---------------------|"
+    echo "  1. Read all data"
+    for (( i=0; i < ${#col_list[@]};i++ ));
+    do
+        echo "  "$((i+2))". Read by ${col_list[$i]}"
+    done
+    echo "|---------------------|"
+    printf "Choose from the list: "
+    read READMENU
+
+    case $READMENU in
+
+    1)
+        cat ./$first_arg
+    ;;
+
+    2)
+        search_by "${col_list[0]}" 
+    ;;
+    
+    3)
+        search_by "{col_list[1]}"
+    ;; 
+
+    4)
+        search_by "{col_list[2]}"
+    ;;
+    
+    5)
+        search_by "{col_list[3]}"
+    ;;
+    esac
+
+}
+
+search_by(){
+    search_by_arg="$@"
+
+    echo "$search_by_arg"
+
+}
+
 insert_data(){
     insert_list=()
-    mandatory=0
     echo "You have entered inserting mode, follow the instructions!"
     
     for ((i=0; i < ${#col_list[@]}; i++));
@@ -242,6 +289,7 @@ create_db() {
     then
       touch $first_arg
       echo "Database: $first_arg is successfully created."
+      create_table_header
       create_table_selection
     else
       echo "Database could not be created, file with provided name already exists in current directory!"
