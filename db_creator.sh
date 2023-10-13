@@ -174,7 +174,7 @@ insert_data(){
     for ((i=0; i < ${#col_list[@]}; i++));
     do	
 	
-	while [ $mandatory -eq 0 ]
+	while true
 	do
 
             printf "Insert the ${col_list[$i]} value: "
@@ -186,15 +186,16 @@ insert_data(){
 		    echo "Mandatory fields: ${col_list[0]} and ${col_list[1]} cannot be empty!"
 	   	else
 	       	    insert_list+=("$line")
+		    break
 	   	fi
 	    else
 	    	if [ -z $line ];
 	    	then
 		    insert_list+=(" ")
-		    ((mandatory++))
+		    break
 	    	else
 		    insert_list+=("$line")
-		    ((mandatory++))
+		    break
 	    	fi
 	    fi
 	done
