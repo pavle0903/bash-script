@@ -18,6 +18,13 @@ max_rows=4
 max_number=0
 col_list=()
 
+find_field_names(){
+#TODO
+# funkcija treba da uz pomoc regexa dobavi sva imena kolona koja imas, koristi regex da sklonis spaceove i zvezdice
+# svaki put kad ti bude trebao array moci ces da pozoves ovu funk umesto da imas globalnu promenljivu
+
+}
+
 cancel_table_creationi(){
     selected=0
     while [ $selected -eq 0 ]
@@ -151,13 +158,18 @@ create_table_header(){
 table_menu(){
 
     sleep 0.5
+
+    while true
+    do
     
     echo "Loading table menu options.."
-    sleep 0.7
+    sleep 0.5
     echo "|---------------------|"
     echo "  1. Insert data"
     echo "  2. Select data"
     echo "  3. Delete data"
+    echo "  4. Exit"
+    echo "  5. Show table"
     echo "|---------------------|"
     printf "Choose from the list: "
     read TABLEMENU
@@ -173,9 +185,17 @@ table_menu(){
         3)
 	    select_data "Delete"
         ;;
-
+	4)
+	    exit
+	;;
+	5)
+	    cat ./$first_arg
+	;;
+	*)
+	    echo "Not an option. Try again!"
+	;;
     esac
-
+    done
 }
 
 select_data(){
@@ -233,13 +253,10 @@ read_delete(){
     input_file="$first_arg"
  
     column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$first_arg)  
-    echo "${column_index} indeks"
     if [[ $read_or_del == "Read" ]]
     then
-	echo "u readu sam"
         awk -v col="$column_index" -v val="$value" 'NR <= 2 || $col == val' FS=' ' ./$first_arg
     else
-	echo "u delete sam"
 	awk -v value="$value" -v col="$column_index" '$col != value' ./$first_arg | sponge ./$first_arg 
         cat ./$first_arg
     fi
@@ -292,6 +309,7 @@ create_table_selection() {
     do
         echo "|---------------------|"
         echo "  1. Create a table"
+	echo "  3. Modify a table"
         echo "  2. Cancel"
     	echo "|---------------------|"
     	printf "Choose from the list:"
@@ -303,8 +321,20 @@ create_table_selection() {
             create_table
 	    ((creation_menu_selected++))  
     	;;
+
+	2)
+	    printf "Insert table name: "
+	    read table_read
+	    if [[ -e "$table_read" ]];
+	    then
+	        "file exists"
+	    else
+		"file doesnt exists"
+		$first_arg=$table_read
+		table_menu
+	;;
     
-    	2)
+    	3)
             cancel_table_creation
     	;;
     
