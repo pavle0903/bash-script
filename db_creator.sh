@@ -6,7 +6,8 @@ first_arg="$1"
 #This will be useful when creating a table since we are allowed to provide as many fields as we want
 total_args=$#
 
-creation_menu_selected=0
+db_name=
+#creation_menu_selected=0
 max_line_length=39
 max_line_length_without_stars=36
 max_row_length=8
@@ -16,16 +17,22 @@ max_rows=4
 
 #the variable below is for while loop in columns creation
 max_number=0
-col_list=()
 
 find_field_names(){
 #TODO
 # funkcija treba da uz pomoc regexa dobavi sva imena kolona koja imas, koristi regex da sklonis spaceove i zvezdice
 # svaki put kad ti bude trebao array moci ces da pozoves ovu funk umesto da imas globalnu promenljivu
-
+#    read -ra fields_array <<< "$( awk 'NR==2 { print $0 }' FS='[ *]+'  ./$db_name)"
+#    result=$( awk 'NR==2 {for ( i=1; i <= NF; i++) { printf "%s ", $i }} ' 'FS=[ *]+'  ./$db_name)
+#    read -ra fields_array <<< "$(echo -e "$result")"    
+#    echo "${#fields_array[@]} ovo je array"
+    
+    IFS=' *' read -ra fields_array <<< $( awk 'NR==2' ./$db_name)
+#    IFS=' *' read -ra fields_array <<< "$( awk 'NR==2 {for ( i=1; i <=NF; i++) {printf "%s ", $i }} ' ./$db_name)"
+    echo "${fields_array[@]}"
 }
 
-cancel_table_creationi(){
+cancel_table_creation(){
     selected=0
     while [ $selected -eq 0 ]
     do
@@ -38,7 +45,7 @@ cancel_table_creationi(){
         y)
             echo "Aborting table creation.."
             sleep 0.5
-            rm -rf ./$first_arg
+            rm -rf ./$db_name
             echo "Database file is deleted."
             ((selected++))
 	    ((creation_menu_selected++))
@@ -77,13 +84,18 @@ create_table(){
         	echo "Try again."
     	else
             col_list=("${FIELDNAMES[@]}")
-	    validate_length "${FIELDNAMES[@]}"
+	    validate_length "${#FIELDNAMES[@]}" "${col_list[@]}" "${FIELDNAMES[@]}"
         fi 
     done
 }
 validate_length(){
 #using $@ we are taking the passed arg to field_names variable, $@ to preserve empty elements
-    field_names=("$@")
+#   it will store every argument provided starting from $1(which is length of the array) plus two, so if $1(length) is 4 it will skip first 4 args plus 2, and it will store everything starting from 6st arg
+#   because at the 6st arg starts the array that we need in this variable
+    field_names=("${@:$1+2}")
+#   this will store every arg starting from second (first is $1 which represents length of the array). col_list arg has exactly the same num of args as fieldnames and it will store everything from the second#   argument @ means all 2 means starting arg and $1 means last arg
+    col_list=("${@:2:$1}")
+
     for ((i=0;i < ${#field_names[@]};i++));
     do
         if (( ${#field_names[$i]} > $max_row_length_with_space ));
@@ -93,7 +105,7 @@ validate_length(){
 	    if [ ${field_names[$i]} == ${col_list[$i]} ];
 	    then
 		sleep 0.3
-		echo "Redirecting back to table rows creation.."
+		echo "Redirecting back to table columns creation.."
 		sleep 0.6
 	        create_table
 	    else
@@ -125,7 +137,6 @@ populate_table() {
         
     done
 
-    echo "${#new_line} ovo je new line"
     if (("${#new_line}" < $max_line_length_without_stars ));
     then
         for ((i="${#new_line}"; i < $max_line_length_without_stars; i++));
@@ -137,10 +148,12 @@ populate_table() {
     echo "Updating table.."
     sleep 0.7
     new_col+="**"
-    echo "${new_col}" >> ./$first_arg
+    echo "${new_col}" >> ./$db_name
     echo "Table is successfully updated!"
-    cat ./$first_arg
+    cat ./$db_name
 
+# this will call function that will get us column names
+#    find_field_names
     table_menu
 
 }
@@ -151,7 +164,7 @@ create_table_header(){
     do
         header_stars+="*"
     done
-    echo "$header_stars" >> ./$first_arg
+    echo "$header_stars" >> ./$db_name
 
 }
 
@@ -189,7 +202,7 @@ table_menu(){
 	    exit
 	;;
 	5)
-	    cat ./$first_arg
+	    cat ./$db_name
 	;;
 	*)
 	    echo "Not an option. Try again!"
@@ -199,6 +212,7 @@ table_menu(){
 }
 
 select_data(){
+    col_list=($(find_field_names))
     read_or_delete=$1
     echo "You have entered $read_or_delete data mode, loading options.."
     sleep 0.4
@@ -215,7 +229,7 @@ select_data(){
     case $READMENU in
 
     1)
-        cat ./$first_arg
+        cat ./$db_name
     ;;
 
     2)
@@ -250,28 +264,29 @@ read_delete(){
     echo "$search_by_arg"
     value="$2"
     read_or_del="$3"
-    input_file="$first_arg"
+    input_file="$db_name"
  
-    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$first_arg)  
+    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$db_name)  
     if [[ $read_or_del == "Read" ]]
     then
-        awk -v col="$column_index" -v val="$value" 'NR <= 2 || $col == val' FS=' ' ./$first_arg
+        awk -v col="$column_index" -v val="$value" 'NR <= 2 || $col == val' FS=' ' ./$db_name
     else
-	awk -v value="$value" -v col="$column_index" '$col != value' ./$first_arg | sponge ./$first_arg 
-        cat ./$first_arg
+	awk -v value="$value" -v col="$column_index" '$col != value' ./$db_name | sponge ./$db_name 
+        cat ./$db_name
     fi
 #   NR=1 umesto NR==1 setuje 1 za svaku liniju umesto da odradi samo prvu liniju? 
 #   NF je koliko ima kolona u odredjenom redu
 #   -F' ' specifies that the field separator is space
 #   NR <= 2 will print first two lines from the file
 #   $2 represents the position of the second column, we separated row by spaces
-#   awk -v value="$search_by_arg" -F' ' 'NR <= 2 || { for (i = 1; i <= NF; i++) if ($i == value) { print; break} }' ./$first_arg 
+#   awk -v value="$search_by_arg" -F' ' 'NR <= 2 || { for (i = 1; i <= NF; i++) if ($i == value) { print; break} }' ./$db_name 
 }
 
 insert_data(){
-    insert_list=()
-    echo "You have entered inserting mode, follow the instructions!"
     
+    col_list=($(find_field_names))
+    insert_list=()
+    echo "You are entering insert mode.." 
     for ((i=0; i < ${#col_list[@]}; i++));
     do	
 	
@@ -285,10 +300,11 @@ insert_data(){
 	        if [ -z $line ];
 	   	then
 		    echo "Mandatory fields: ${col_list[0]} and ${col_list[1]} cannot be empty!"
+		    i=0
 	   	else
 	       	    insert_list+=("$line")
-		    break
-	   	fi
+	   	    break
+                fi
 	    else
 	    	if [ -z $line ];
 	    	then
@@ -301,16 +317,17 @@ insert_data(){
 	    fi
 	done
     done
-    validate_length "${insert_list[@]}"
+    validate_length "${#insert_list[@]}" "${col_list[@]}" "${insert_list[@]}"
 }
 
-create_table_selection() {
-    while [ $creation_menu_selected -eq 0 ]
+create_table_selection() {   
+    counter=0
+    while [ $counter -eq 0 ]
     do
         echo "|---------------------|"
-        echo "  1. Create a table"
-	echo "  3. Modify a table"
-        echo "  2. Cancel"
+        echo "  1. Create database"
+	echo "  2. Modify database"
+        echo "  3. Cancel"
     	echo "|---------------------|"
     	printf "Choose from the list:"
     	read -r SELECTION
@@ -318,8 +335,10 @@ create_table_selection() {
     	case $SELECTION in
     
     	1)
-            create_table
-	    ((creation_menu_selected++))  
+	    printf "Insert the database name: "
+	    read DB_NAME
+	    ((counter++))
+            create_db "$DB_NAME"
     	;;
 
 	2)
@@ -330,8 +349,9 @@ create_table_selection() {
 	        "file exists"
 	    else
 		"file doesnt exists"
-		$first_arg=$table_read
+		$db_name=$table_read
 		table_menu
+	    fi
 	;;
     
     	3)
@@ -348,24 +368,30 @@ create_table_selection() {
 
 #Function that will create a db(file) with provided name
 create_db() {
+#  this variable stores the db name inserted by user in create_table_selection and passed as an arg to this func
+#    db_name=$1
+ 
+    db_name=$1
+
     echo "Creating database.."
     sleep 0.5
-    echo "Provided database name: $first_arg"
+    echo "Provided database name: $db_name"
     sleep 0.8
-    if ! test -f ./$first_arg
+    if ! test -f ./$db_name
     then
-      touch $first_arg
-      echo "Database: $first_arg is successfully created."
+      touch $db_name
+      echo "Database: $db_name is successfully created."
       create_table_header
-      create_table_selection
+      create_table
+#      create_table_selection
     else
       echo "Database could not be created, file with provided name already exists in current directory!"
     fi
 }
-
-if [ $total_args -eq 0 ]
-then
-    echo "There is no arguments provided, could not create database."
-else
-    create_db
-fi
+create_table_selection
+#if [ $total_args -eq 0 ]
+#then
+#    echo "There is no arguments provided, could not create database."
+#else
+#    create_db
+#fi
