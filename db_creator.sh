@@ -7,7 +7,6 @@ first_arg="$1"
 total_args=$#
 
 db_name=
-#creation_menu_selected=0
 max_line_length=39
 max_line_length_without_stars=36
 max_row_length=8
@@ -16,7 +15,7 @@ max_row_length_with_stars=9
 max_rows=4
 
 #the variable below is for while loop in columns creation
-max_number=0
+#max_number=0
 
 find_field_names(){
 #TODO
@@ -31,7 +30,7 @@ find_field_names(){
 #    IFS=' *' read -ra fields_array <<< "$( awk 'NR==2 {for ( i=1; i <=NF; i++) {printf "%s ", $i }} ' ./$db_name)"
     echo "${fields_array[@]}"
 }
-
+: '
 cancel_table_creation(){
     selected=0
     while [ $selected -eq 0 ]
@@ -64,6 +63,7 @@ cancel_table_creation(){
         esac
     done
 }
+'
 
 #Function for table creating
 create_table(){
@@ -116,7 +116,7 @@ validate_length(){
 	    fi             
 	fi
     done
-    ((max_number++))
+#    ((max_number++))
     populate_table "${field_names[@]}"
 }
 
@@ -346,16 +346,19 @@ create_table_selection() {
 	    read table_read
 	    if [[ -e "$table_read" ]];
 	    then
-	        "file exists"
-	    else
-		"file doesnt exists"
-		$db_name=$table_read
+	        db_name=$table_read
 		table_menu
+	    else
+		echo "Database does not exist!"
+		sleep 0.5
+#		$db_name=$table_read
+#		table_menu
 	    fi
 	;;
     
     	3)
-            cancel_table_creation
+#            cancel_table_creation
+	    exit
     	;;
     
     	*)
