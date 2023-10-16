@@ -18,10 +18,9 @@ max_args_in_db_name=1
 #the variable below is for while loop in columns creation
 #max_number=0
 
+# Function that will read field names from the second row in the file and return them in array
 find_field_names(){
 #TODO
-# funkcija treba da uz pomoc regexa dobavi sva imena kolona koja imas, koristi regex da sklonis spaceove i zvezdice
-# svaki put kad ti bude trebao array moci ces da pozoves ovu funk umesto da imas globalnu promenljivu
 #    read -ra fields_array <<< "$( awk 'NR==2 { print $0 }' FS='[ *]+'  ./$db_name)"
 #    result=$( awk 'NR==2 {for ( i=1; i <= NF; i++) { printf "%s ", $i }} ' 'FS=[ *]+'  ./$db_name)
 #    read -ra fields_array <<< "$(echo -e "$result")"    
@@ -66,7 +65,7 @@ cancel_table_creation(){
 }
 '
 
-#Function for table creating
+#Function for creating field names in db, it sets first two names as mandatory fields, allows us to have up to 4 field names(columns). Then it calls validate length
 create_table(){
 #    max_number=0
 #    all_passed=0
@@ -75,6 +74,7 @@ create_table(){
     do
         echo "Input the field names (example: id name height age)"
     	echo "*First two field names will be created as mandatory fields!"
+	echo "*First field will be set as unique field!" 
 	read -a FIELDNAMES
 
 	
@@ -82,7 +82,7 @@ create_table(){
     	fields_number=${#FIELDNAMES[@]}    
     	if (($fields_number > $max_rows ));
     	then
-        	echo "The maximum number of rows is $max_rows."
+        	echo "The maximum number of columns is $max_rows."
         	echo "Try again."
     	else
             col_list=("${FIELDNAMES[@]}")
@@ -90,6 +90,9 @@ create_table(){
         fi 
     done
 }
+
+#Function that will check the length of every field name or its value, if it exceedes allowed length then it calls back create_table or insert_data. If everything is okay then populate_table will be called
+
 validate_length(){
 #using $@ we are taking the passed arg to field_names variable, $@ to preserve empty elements
 #   it will store every argument provided starting from $1(which is length of the array) plus two, so if $1(length) is 4 it will skip first 4 args plus 2, and it will store everything starting from 6st arg
@@ -121,6 +124,8 @@ validate_length(){
 #    ((max_number++))
     populate_table "${field_names[@]}"
 }
+
+# Function populate table will simply take all fields, add stars and spaces needed and then write it to the file
 
 populate_table() {
     new_col=""
@@ -170,6 +175,8 @@ create_table_header(){
 
 }
 
+#Function for table menu, it will loop always and get us through functionalities
+
 table_menu(){
 
     sleep 0.5
@@ -177,41 +184,43 @@ table_menu(){
     while true
     do
     
-    echo "Loading table menu options.."
-    sleep 0.5
-    echo "|---------------------|"
-    echo "  1. Insert data"
-    echo "  2. Select data"
-    echo "  3. Delete data"
-    echo "  4. Show table"
-    echo "  5. Exit"
-    echo "|---------------------|"
-    printf "Choose from the list: "
-    read TABLEMENU
+        echo "Loading table menu options.."
+    	sleep 0.5
+    	echo "|---------------------|"
+    	echo "  1. Insert data"
+    	echo "  2. Select data"
+    	echo "  3. Delete data"
+    	echo "  4. Show table"
+    	echo "  5. Exit"
+    	echo "|---------------------|"
+    	printf "Choose from the list: "
+    	read TABLEMENU
 
-    case $TABLEMENU in
+    	case $TABLEMENU in
         
-        1)
-	    insert_data
-	;;         
-        2)
-	    select_data "Read"
-        ;;
-        3)
-	    select_data "Delete"
-        ;;
-	4)
-	    cat ./$db_name
-	;;
-	5)
-	    exit
-	;;
-	*)
-	    echo "Not an option. Try again!"
-	;;
-    esac
-    done
+            1)
+	        insert_data
+	    ;;         
+            2)
+	        select_data "Read"
+            ;;
+            3)
+	        select_data "Delete"
+            ;;
+	    4)
+	        cat ./$db_name
+	    ;;
+ 	    5)
+	        exit
+	    ;;
+	    *)
+	        echo "Not an option. Try again!"
+	    ;;
+        esac
+        done
 }
+
+# Function select data gives us manu for read or delete options, it is dynamically populated with names of fields by function find_field_names
 
 select_data(){
     col_list=($(find_field_names))
@@ -264,20 +273,28 @@ select_data(){
 	read id_read
         read_delete "${col_list[3]}" "$id_read" "$read_or_delete"
     ;;
+
+    *)
+	echo "Not an option. Try again!"
+    ;;
     esac
 
 }
+
+# Function existance_check will get us information does provided value exists in the db
 
 existance_check(){
     
     search_by_arg=$1
     value=$2
 
-    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$db_name)  
-    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
+    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS='[ *]+' ./$db_name)  
+    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS='[ *]+' ./$db_name)"
     echo "$result"
     
 }
+
+# Function read_delete is used to depends on selected read or delete show us rows by selected column name or delete them
 
 read_delete(){
     search_by_arg="$1"
@@ -285,11 +302,11 @@ read_delete(){
     read_or_del="$3"
     input_file="$db_name"
 
-#    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$db_name)  
+    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS='[ *]+' ./$db_name) 
+    echo "$column_index col index iz read delete" 
 #    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
 
     result=$(existance_check "$search_by_arg" "$value") 
-   
     if [ -z "$result" ];
     then
         sleep 0.3
@@ -305,7 +322,9 @@ read_delete(){
 	    echo "$result"
         else
 #           this awk checks does column provided has the value provided, all != will be sponged and == will be removed
-	    awk -v value="$value" -v col="$column_index" '$col != value' ./$db_name | sponge ./$db_name
+ 	    awk -v value="$value" -v col="$column_index" '$col != value' FS='[ *]+'  ./$db_name | sponge ./$db_name
+	    sleep 0.3
+            echo "Successfully deleted!"
 #            cat ./$db_name
 	fi
     fi
@@ -317,11 +336,13 @@ read_delete(){
 #   awk -v value="$search_by_arg" -F' ' 'NR <= 2 || { for (i = 1; i <= NF; i++) if ($i == value) { print; break} }' ./$db_name 
 }
 
+# Function insert_data will get all the inputs from user to insert a new row, it will check for mandatory fields not to be empty or first value uniqueness
+
 insert_data(){
     
     col_list=($(find_field_names))
     insert_list=()
-    echo "You are entering insert mode.." 
+    echo "You are entering insert mode.."
     for ((i=0; i < ${#col_list[@]}; i++));
     do	
 	
@@ -337,13 +358,19 @@ insert_data(){
 		    echo "Mandatory fields: ${col_list[0]} and ${col_list[1]} cannot be empty!"
 		    i=0
 	   	else
-		    result=$(existance_check "${col_list[$i]}" "$line")
-		    if [ -z "$result" ];
+		    if [[ $i -eq 0 ]];
 		    then
-	       	        insert_list+=("$line")
-	   	        break
+		        result=$(existance_check "${col_list[0]}" "$line")
+ 		    	if [[ -z $result ]];
+		    	then
+	       	            insert_list+=("$line")
+	   	            break
+		        else
+		  	    echo "Provided ${col_list[$i]} already exists!"
+		        fi
 		    else
-		  	echo "Provided ${col_list[$i]} already exists!"
+			insert_list+=("$line")
+			break
 		    fi
                 fi
 	    else
@@ -389,12 +416,21 @@ create_table_selection() {
     	;;
 
 	2)
-	    printf "Insert table name: "
+	    printf "Insert the database name: "
 	    read table_read
 	    if [[ -e "$table_read" ]];
 	    then
-	        db_name=$table_read
-		table_menu
+		extension="${table_read##*.}"
+		if [ "$extension" = "database" ];
+		then
+	            db_name=$table_read
+		    table_menu
+		else
+		    sleep 0.3
+		    echo "Not supported file. Try with another one!"
+		    sleep 0.3
+		fi
+		
 	    else
 		echo "Database does not exist!"
 		sleep 0.5
@@ -421,7 +457,8 @@ create_db() {
 #  this variable stores the db name inserted by user in create_table_selection and passed as an arg to this func
 #    db_name=$1
  
-    db_name=$1
+    db_name=$1.database
+    
 
     echo "Creating database.."
     sleep 0.5
