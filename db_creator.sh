@@ -13,6 +13,7 @@ max_row_length=8
 max_row_length_with_space=7
 max_row_length_with_stars=9
 max_rows=4
+max_args_in_db_name=1
 
 #the variable below is for while loop in columns creation
 #max_number=0
@@ -67,9 +68,10 @@ cancel_table_creation(){
 
 #Function for table creating
 create_table(){
-    max_number=0
-    all_passed=0
-    while [ $max_number -eq 0 ]
+#    max_number=0
+#    all_passed=0
+#    while [ $max_number -eq 0 ]
+    while true;
     do
         echo "Input the field names (example: id name height age)"
     	echo "*First two field names will be created as mandatory fields!"
@@ -181,8 +183,8 @@ table_menu(){
     echo "  1. Insert data"
     echo "  2. Select data"
     echo "  3. Delete data"
-    echo "  4. Exit"
-    echo "  5. Show table"
+    echo "  4. Show table"
+    echo "  5. Exit"
     echo "|---------------------|"
     printf "Choose from the list: "
     read TABLEMENU
@@ -199,10 +201,10 @@ table_menu(){
 	    select_data "Delete"
         ;;
 	4)
-	    exit
+	    cat ./$db_name
 	;;
 	5)
-	    cat ./$db_name
+	    exit
 	;;
 	*)
 	    echo "Not an option. Try again!"
@@ -229,7 +231,14 @@ select_data(){
     case $READMENU in
 
     1)
-        cat ./$db_name
+	if [[ $read_or_delete == "Read" ]];
+        then
+            cat ./$db_name
+	else
+	    awk 'NR<=2' ./$db_name | sponge ./$db_name
+	    sleep 0.3
+	    echo "Table data is successfully deleted!"
+	fi
     ;;
 
     2)
@@ -259,20 +268,46 @@ select_data(){
 
 }
 
+existance_check(){
+    
+    search_by_arg=$1
+    value=$2
+
+    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$db_name)  
+    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
+    echo "$result"
+    
+}
+
 read_delete(){
     search_by_arg="$1"
-    echo "$search_by_arg"
     value="$2"
     read_or_del="$3"
     input_file="$db_name"
- 
-    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$db_name)  
-    if [[ $read_or_del == "Read" ]]
+
+#    column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS=' ' ./$db_name)  
+#    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
+
+    result=$(existance_check "$search_by_arg" "$value") 
+   
+    if [ -z "$result" ];
     then
-        awk -v col="$column_index" -v val="$value" 'NR <= 2 || $col == val' FS=' ' ./$db_name
+        sleep 0.3
+	echo "Provided $search_by_arg does not exists in database!"
+	sleep 0.3
     else
-	awk -v value="$value" -v col="$column_index" '$col != value' ./$db_name | sponge ./$db_name 
-        cat ./$db_name
+
+        if [[ $read_or_del == "Read" ]]
+        then
+#           this awk checks if the val variable value exists in the $col column provided by awk column_index and prints it
+#        result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
+	    awk 'NR <= 2' ./$db_name
+	    echo "$result"
+        else
+#           this awk checks does column provided has the value provided, all != will be sponged and == will be removed
+	    awk -v value="$value" -v col="$column_index" '$col != value' ./$db_name | sponge ./$db_name
+#            cat ./$db_name
+	fi
     fi
 #   NR=1 umesto NR==1 setuje 1 za svaku liniju umesto da odradi samo prvu liniju? 
 #   NF je koliko ima kolona u odredjenom redu
@@ -302,8 +337,14 @@ insert_data(){
 		    echo "Mandatory fields: ${col_list[0]} and ${col_list[1]} cannot be empty!"
 		    i=0
 	   	else
-	       	    insert_list+=("$line")
-	   	    break
+		    result=$(existance_check "${col_list[$i]}" "$line")
+		    if [ -z "$result" ];
+		    then
+	       	        insert_list+=("$line")
+	   	        break
+		    else
+		  	echo "Provided ${col_list[$i]} already exists!"
+		    fi
                 fi
 	    else
 	    	if [ -z $line ];
@@ -336,9 +377,15 @@ create_table_selection() {
     
     	1)
 	    printf "Insert the database name: "
-	    read DB_NAME
-	    ((counter++))
-            create_db "$DB_NAME"
+	    read -a DB_NAME
+	    if (( "${#DB_NAME[@]}" > $max_args_in_db_name ));
+	    then
+		echo "Invalid database name! Try again!"
+		sleep 0.4
+	    else
+	        ((counter++))
+            	create_db "${DB_NAME[0]}"
+	    fi
     	;;
 
 	2)
