@@ -303,7 +303,6 @@ read_delete(){
     input_file="$db_name"
 
     column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS='[ *]+' ./$db_name) 
-    echo "$column_index col index iz read delete" 
 #    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
 
     result=$(existance_check "$search_by_arg" "$value") 
@@ -452,14 +451,31 @@ create_table_selection() {
     done
 }
 
+check_dependencies(){
+
+    dependencies=("moreutils")
+
+    for i in "${dependencies[@]}";
+    do
+        if ! brew list "$i" &> /dev/null;
+	then
+	    echo "Error: $i is not installed or not in the PATH."
+	    echo "Please install it using 'brew install $i'."
+	    exit 1
+	fi
+    done
+    echo "All dependencies are installed. Proceeding with the script.."
+    sleep 0.3
+}
+
 #Function that will create a db(file) with provided name
 create_db() {
 #  this variable stores the db name inserted by user in create_table_selection and passed as an arg to this func
 #    db_name=$1
  
     db_name=$1.database
-    
-
+    echo "Checking required dependencies.."
+    check_dependencies
     echo "Creating database.."
     sleep 0.5
     echo "Provided database name: $db_name"
