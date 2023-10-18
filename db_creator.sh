@@ -294,7 +294,7 @@ existance_check(){
     
 }
 
-# Function read_delete is used to depends on selected read or delete show us rows by selected column name or delete them
+# Function read_delete is used to, depends on selected read or delete show us rows by selected column name or delete them
 
 read_delete(){
     search_by_arg="$1"
@@ -303,9 +303,11 @@ read_delete(){
     input_file="$db_name"
 
     column_index=$(awk -v name="$search_by_arg" '{ for (i=1; i<=NF;i++) { if ($i == name) { print i; exit } } }' FS='[ *]+' ./$db_name) 
-#    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS=' ' ./$db_name)"
-
-    result=$(existance_check "$search_by_arg" "$value") 
+    echo "$column_index ovo je col index"
+    result="$(awk -v col="$column_index" -v val="$value" '$col == val' FS='[ *]+' ./$db_name)"
+    
+    echo "printam src by arg $search_by_arg i val $value"
+#    result=$(existance_check "$search_by_arg" "$value")
     if [ -z "$result" ];
     then
         sleep 0.3
@@ -359,7 +361,7 @@ insert_data(){
 	   	else
 		    if [[ $i -eq 0 ]];
 		    then
-		        result=$(existance_check "${col_list[0]}" "$line")
+		        result=$(existance_check "${col_list[$i]}" "$line")
  		    	if [[ -z $result ]];
 		    	then
 	       	            insert_list+=("$line")
